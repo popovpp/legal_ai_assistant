@@ -9,14 +9,14 @@ from app.graph.nodes.router import route_node
 from app.graph.nodes.verifier import make_verifier_node
 from app.graph.state import AnalysisState
 from app.llm.client import LLMClient
-from app.rag.retriever import Retriever
+from app.rag.retriever import RetrieverLike
 
 
 def _route_after_verifier(state: AnalysisState) -> str:
     return "analyst" if state.get("should_retry") else "finalize"
 
 
-def build_graph(retriever: Retriever, llm: LLMClient):
+def build_graph(retriever: RetrieverLike, llm: LLMClient):
     g = StateGraph(AnalysisState)
     g.add_node("router", route_node)
     g.add_node("retrieve", make_retrieve_node(retriever, settings.top_k))

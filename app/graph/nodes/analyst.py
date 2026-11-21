@@ -2,12 +2,12 @@
 import time
 
 from app.graph.prompts import ANALYST_SYSTEM, build_analyst_prompt
-from app.graph.state import AnalysisState
+from app.graph.state import AnalysisState, RetrievedChunkDict
 from app.llm.client import LLMClient, LLMError
 from app.llm.schemas import AnalystOutputSchema
 
 
-def _page_of(retrieved: list[dict], chunk_id: str) -> int:
+def _page_of(retrieved: list[RetrievedChunkDict], chunk_id: str) -> int:
     for c in retrieved:
         if c["chunk_id"] == chunk_id:
             return c["page"]
@@ -23,7 +23,10 @@ def make_analyst_node(llm: LLMClient):
             trace = {
                 "node": "analyst",
                 "duration_ms": int((time.monotonic() - t0) * 1000),
-                "llm_calls": 0, "tokens_in": 0, "tokens_out": 0, "error": None,
+                "llm_calls": 0,
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "error": None,
                 "model": None,
             }
             return {
@@ -56,7 +59,10 @@ def make_analyst_node(llm: LLMClient):
             trace = {
                 "node": "analyst",
                 "duration_ms": int((time.monotonic() - t0) * 1000),
-                "llm_calls": 1, "tokens_in": 0, "tokens_out": 0, "error": str(exc),
+                "llm_calls": 1,
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "error": str(exc),
                 "model": None,
             }
             return {
@@ -106,4 +112,5 @@ def make_analyst_node(llm: LLMClient):
             "risks": risks,
             "trace": [trace],
         }
+
     return analyst

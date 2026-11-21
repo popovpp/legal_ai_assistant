@@ -5,17 +5,27 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api import analyses, documents
+from app.cache import InMemoryLRU
 from app.config import settings
 from app.ingestion.embedder import Embedder
 from app.llm.client import LLMClient
 from app.models.db import init_db
+from app.observability.middleware import RequestIDFilter, RequestIDMiddleware
 from app.rag.retriever import Retriever
 from app.rag.vector_store import FaissVectorStore
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='{"ts":"%(asctime)s","level":"%(levelname)s","logger":"%(name)s","msg":"%(message)s"}',
+handler = logging.StreamHandler()
+handler.setFormatter(
+    logging.Formatter(
+        '{"ts":"%(asctime)s","level":"%(levelname)s","request_id":"%(request_id)s",'
+        '"logger":"%(name)s","msg":"%(message)s"}'
+    )
 )
+handler.addFilter(RequestIDFilter())
+
+root = logging.getLogger()
+root.handlers = [handler]
+root.setLevel(logging.INFO)
 
 
 @asynccontextmanager
@@ -33,14 +43,14 @@ async def lifespan(app: FastAPI):
     app.state.vector_store = store
     app.state.retriever = retriever
     app.state.llm = llm
+    app.state.cache = InMemoryLRU(max_size=256)
 
-    logging.getLogger(__name__).info(
-        "startup ok vectors=%d models=%s", len(store), settings.llm_model_chain
-    )
+    logging.getLogger(__name__).info("startup ok vectors=%d models=%s", len(store), settings.llm_model_chain)
     yield
 
 
 app = FastAPI(title="Legal AI Assistant", lifespan=lifespan)
+app.add_middleware(RequestIDMiddleware)
 app.include_router(documents.router)
 app.include_router(analyses.router)
 

@@ -2,7 +2,7 @@
 import operator
 from typing import Annotated, Literal, TypedDict
 
-Mode = Literal["qa", "summary", "risk"]
+Mode = Literal["auto", "qa", "summary", "risk"]
 
 
 class RetrievedChunkDict(TypedDict):

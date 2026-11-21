@@ -39,9 +39,7 @@ async def upload_document(
 ) -> DocumentUploadResponse:
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in SUPPORTED_EXTENSIONS:
-        raise HTTPException(
-            415, f"Unsupported file type: {suffix}. Allowed: {sorted(SUPPORTED_EXTENSIONS)}"
-        )
+        raise HTTPException(415, f"Unsupported file type: {suffix}. Allowed: {sorted(SUPPORTED_EXTENSIONS)}")
 
     data = await file.read()
     if not data:
@@ -75,8 +73,7 @@ async def upload_document(
 def list_documents() -> list[DocumentInfo]:
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, filename, mime, num_pages, num_chunks, created_at "
-            "FROM documents ORDER BY created_at DESC"
+            "SELECT id, filename, mime, num_pages, num_chunks, created_at FROM documents ORDER BY created_at DESC"
         ).fetchall()
     return [
         DocumentInfo(

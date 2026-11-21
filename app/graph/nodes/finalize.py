@@ -18,7 +18,10 @@ def finalize_node(state: AnalysisState) -> dict:
     trace = {
         "node": "finalize",
         "duration_ms": int((time.monotonic() - t0) * 1000),
-        "llm_calls": 0, "tokens_in": 0, "tokens_out": 0, "error": None,
+        "llm_calls": 0,
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "error": None,
         "model": None,
     }
     return {"warnings": warnings, "trace": [trace]}

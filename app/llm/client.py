@@ -2,8 +2,9 @@
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Type, TypeVar
+from typing import Any, TypeVar
 
 from google import genai
 from google.genai import types
@@ -67,11 +68,9 @@ class LLMClient:
                 return fn()
             except Exception as exc:  # noqa: BLE001 — retry любых ошибок SDK
                 last_exc = exc
-                logger.warning(
-                    "llm.%s failed attempt=%d err=%r", label, attempt, exc
-                )
+                logger.warning("llm.%s failed attempt=%d err=%r", label, attempt, exc)
                 if attempt < settings.llm_max_retries:
-                    time.sleep(0.5 * (2 ** attempt))
+                    time.sleep(0.5 * (2**attempt))
         raise LLMError(f"{label} failed after retries: {last_exc}") from last_exc
 
     def generate(
@@ -94,6 +93,7 @@ class LLMClient:
                         system_instruction=system_instruction,
                     ),
                 )
+
             return _call
 
         resp, model_used = self._call_with_fallback(_make_call, "generate")
@@ -109,7 +109,7 @@ class LLMClient:
     def generate_json(
         self,
         prompt: str,
-        schema: Type[T],
+        schema: type[T],
         system_instruction: str | None = None,
         temperature: float = 0.1,
         max_output_tokens: int = 8192,
@@ -132,6 +132,7 @@ class LLMClient:
                             response_schema=schema,
                         ),
                     )
+
                 return _call
 
             resp, model_used = self._call_with_fallback(_make_call, "generate_json")
@@ -144,7 +145,8 @@ class LLMClient:
                 tokens_in, tokens_out = self._usage(resp)
                 return parsed, LLMResponse(
                     text=resp.text or "",
-                    tokens_in=tokens_in, tokens_out=tokens_out,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
                     model=model_used,
                     duration_ms=int((time.monotonic() - start) * 1000),
                 )
@@ -152,7 +154,9 @@ class LLMClient:
             last_raw = resp.text or ""
             logger.warning(
                 "generate_json truncation or no parsed: finish=%s budget=%d len=%d",
-                finish_name, budget, len(last_raw),
+                finish_name,
+                budget,
+                len(last_raw),
             )
             if finish_name == "MAX_TOKENS" and attempt == 0:
                 budget *= 2
@@ -163,14 +167,15 @@ class LLMClient:
                 parsed = schema.model_validate(json.loads(last_raw))
                 tokens_in, tokens_out = self._usage(resp)
                 return parsed, LLMResponse(
-                    text=last_raw, tokens_in=tokens_in, tokens_out=tokens_out,
+                    text=last_raw,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
                     model=model_used,
                     duration_ms=int((time.monotonic() - start) * 1000),
                 )
             except (json.JSONDecodeError, ValidationError) as exc:
                 raise LLMError(
-                    f"generate_json invalid (finish={finish_name}, budget={budget}): {exc}; "
-                    f"raw={last_raw[:200]!r}"
+                    f"generate_json invalid (finish={finish_name}, budget={budget}): {exc}; raw={last_raw[:200]!r}"
                 ) from exc
 
         raise LLMError(f"generate_json exhausted retries; last_raw={last_raw[:200]!r}")

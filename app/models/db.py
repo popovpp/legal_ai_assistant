@@ -1,7 +1,7 @@
 # app/models/db.py
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
 
 from app.config import settings
 
@@ -57,6 +57,6 @@ def get_conn() -> Iterator[sqlite3.Connection]:
 
 
 def init_db() -> None:
-    settings.ensure_dirs()          # ← добавить
+    settings.ensure_dirs()  # ← добавить
     with get_conn() as conn:
         conn.executescript(SCHEMA)

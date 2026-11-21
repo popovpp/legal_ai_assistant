@@ -1,7 +1,7 @@
 # app/ingestion/service.py
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.config import settings
@@ -35,21 +35,22 @@ def ingest_document(
 
     logger.info(
         "ingest document_id=%s file=%s pages=%d chunks=%d",
-        document_id, filename, len(pages), len(chunks),
+        document_id,
+        filename,
+        len(pages),
+        len(chunks),
     )
 
     vectors = embedder.encode([c.text for c in chunks])
 
-    created_at = datetime.now(timezone.utc).isoformat()
+    created_at = datetime.now(UTC).isoformat()
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO documents (id, filename, mime, num_pages, num_chunks, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO documents (id, filename, mime, num_pages, num_chunks, created_at) VALUES (?, ?, ?, ?, ?, ?)",
             (document_id, filename, mime, len(pages), len(chunks), created_at),
         )
         conn.executemany(
-            "INSERT INTO chunks (id, document_id, page, char_start, char_end, text) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO chunks (id, document_id, page, char_start, char_end, text) VALUES (?, ?, ?, ?, ?, ?)",
             [(c.chunk_id, c.document_id, c.page, c.char_start, c.char_end, c.text) for c in chunks],
         )
 

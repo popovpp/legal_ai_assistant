@@ -59,7 +59,10 @@ def make_verifier_node():
         trace = {
             "node": "verifier",
             "duration_ms": int((time.monotonic() - t0) * 1000),
-            "llm_calls": 0, "tokens_in": 0, "tokens_out": 0, "error": None,
+            "llm_calls": 0,
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "error": None,
             "model": None,
         }
         result = {
@@ -72,4 +75,5 @@ def make_verifier_node():
         if should_retry:
             result["retry_count"] = retry_count + 1
         return result
+
     return verifier

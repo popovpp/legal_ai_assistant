@@ -35,26 +35,29 @@ class FaissVectorStore:
 
     def __init__(self, index_dir: Path):
         self.index_dir = index_dir
-        self._index: faiss.IndexFlatIP | None = None
+        self._index: faiss.Index | None = None
         self._ids: list[str] = []
         self._meta: dict[str, dict] = {}
 
     def __len__(self) -> int:
         return 0 if self._index is None else self._index.ntotal
 
-    def _ensure_index(self, dim: int) -> None:
-        if self._index is None:
-            self._index = faiss.IndexFlatIP(dim)
+    def _ensure_index(self, dim: int) -> faiss.Index:
+        index = self._index
+        if index is None:
+            index = faiss.IndexFlatIP(dim)
+            self._index = index
+        return index
 
     def add(self, chunks: list[Chunk], vectors: np.ndarray) -> None:
         if len(chunks) != vectors.shape[0]:
             raise ValueError(f"chunks={len(chunks)} != vectors={vectors.shape[0]}")
         vecs = vectors.astype(np.float32).copy()
         faiss.normalize_L2(vecs)
-        self._ensure_index(vecs.shape[1])
-        if vecs.shape[1] != self._index.d:
-            raise ValueError(f"vector dim {vecs.shape[1]} != index dim {self._index.d}")
-        self._index.add(vecs)
+        index = self._ensure_index(vecs.shape[1])
+        if vecs.shape[1] != index.d:
+            raise ValueError(f"vector dim {vecs.shape[1]} != index dim {index.d}")
+        index.add(vecs)
         for c in chunks:
             self._ids.append(c.chunk_id)
             self._meta[c.chunk_id] = {"page": c.page, "text": c.text}
@@ -66,7 +69,7 @@ class FaissVectorStore:
         faiss.normalize_L2(q)
         scores, indices = self._index.search(q, min(k, self._index.ntotal))
         out: list[ScoredChunk] = []
-        for score, idx in zip(scores[0], indices[0]):
+        for score, idx in zip(scores[0], indices[0], strict=False):
             if idx < 0:
                 continue
             cid = self._ids[int(idx)]
@@ -96,8 +99,9 @@ class FaissVectorStore:
         meta_path = self.index_dir / self.META_FILE
         if not idx_path.exists() or not meta_path.exists():
             return
-        self._index = faiss.read_index(str(idx_path))
+        index = faiss.read_index(str(idx_path))
+        self._index = index
         data = json.loads(meta_path.read_text(encoding="utf-8"))
         self._ids = data["ids"]
         self._meta = data["meta"]
-        logger.info("loaded faiss index: %d vectors, dim=%d", self._index.ntotal, self._index.d)
+        logger.info("loaded faiss index: %d vectors, dim=%d", index.ntotal, index.d)

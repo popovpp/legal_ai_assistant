@@ -2,16 +2,22 @@
 import logging
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.cache import InMemoryLRU
 from app.config import settings
 from app.graph.builder import build_graph
 from app.llm.client import LLMClient
 from app.models.db import get_conn
 from app.models.schemas import (
-    AnalysisRequest, AnalysisResponse, Citation, Risk, TraceEvent, VerificationResult,
+    AnalysisRequest,
+    AnalysisResponse,
+    Citation,
+    Risk,
+    TraceEvent,
+    VerificationResult,
 )
 from app.rag.retriever import Retriever
 
@@ -29,10 +35,27 @@ def _retriever(request: Request) -> Retriever:
 
 @router.post("", response_model=AnalysisResponse)
 def run_analysis(
+    request: Request,
     payload: AnalysisRequest,
     llm: LLMClient = Depends(_llm),
     retriever: Retriever = Depends(_retriever),
 ) -> AnalysisResponse:
+
+    cache: InMemoryLRU = request.app.state.cache
+    cache_key = InMemoryLRU.make_key(
+        payload.document_id,
+        payload.query,
+        payload.mode,
+        retriever.index_version,
+    )
+
+    cached = cache.get(cache_key)
+    if cached is not None:
+        # возвращаем кэш, но с новым analysis_id и признаком cache_hit
+        cached.analysis_id = uuid.uuid4().hex
+        cached.warnings = list(cached.warnings) + ["cache_hit"]
+        return cached
+
     with get_conn() as conn:
         exists = conn.execute("SELECT 1 FROM documents WHERE id = ?", (payload.document_id,)).fetchone()
     if not exists:
@@ -79,16 +102,24 @@ def run_analysis(
 
     with get_conn() as conn:
         conn.execute(
-            "INSERT INTO analyses (id, document_id, query, mode, status, result_json, error, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO analyses ("
+            "id, document_id, query, mode, status, result_json, error, created_at"
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                analysis_id, payload.document_id, payload.query, response.mode,
+                analysis_id,
+                payload.document_id,
+                payload.query,
+                response.mode,
                 "error" if response.error else "ok",
                 response.model_dump_json(),
                 response.error,
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
             ),
         )
+
+    if response.error is None:
+        cache.put(cache_key, response.model_copy(deep=True))
+
     return response
 
 

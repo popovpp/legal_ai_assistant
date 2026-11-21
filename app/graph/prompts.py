@@ -11,8 +11,7 @@ ANALYST_SYSTEM = (
 
 def build_analyst_prompt(query, mode, chunks, feedback=None):
     context = "\n\n".join(
-        f"[chunk_id={c['chunk_id']} | page={c['page']} | score={c['score']:.3f}]\n{c['text']}"
-        for c in chunks
+        f"[chunk_id={c['chunk_id']} | page={c['page']} | score={c['score']:.3f}]\n{c['text']}" for c in chunks
     )
     mode_instructions = {
         "qa": "Answer the question based only on the fragments.",

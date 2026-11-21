@@ -1,6 +1,14 @@
-# app/rag/retriever.py
+from typing import Protocol
+
 from app.ingestion.embedder import Embedder
 from app.rag.vector_store import ScoredChunk, VectorStore
+
+
+class RetrieverLike(Protocol):
+    @property
+    def index_version(self) -> int: ...
+
+    def retrieve(self, query: str, k: int = 6) -> list[ScoredChunk]: ...
 
 
 class Retriever:
@@ -8,6 +16,10 @@ class Retriever:
         self.embedder = embedder
         self.store = store
         self.min_score = min_score
+
+    @property
+    def index_version(self) -> int:
+        return len(self.store)
 
     def retrieve(self, query: str, k: int = 6) -> list[ScoredChunk]:
         q = self.embedder.encode_one(query)

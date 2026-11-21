@@ -22,7 +22,68 @@ dependencies = [
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "mypy>=2.4.1",
+    "pre-commit>=4.7.0",
     "pytest>=9.2.0",
     "pytest-asyncio>=1.5.0",
     "ruff>=0.17.6",
 ]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # comprehensions
+    "UP",   # pyupgrade
+    "SIM",  # simplify
+    "N",    # pep8-naming
+]
+ignore = [
+    "B008",  # FastAPI Depends() в дефолтах — это норма
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]      # assert в тестах
+"app/api/**" = ["B008"]    # Depends(...) в аргументах
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = false                # начните с false, включите позже
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+ignore_missing_imports = true # для faiss, sentence_transformers, google.genai
+check_untyped_defs = true
+no_implicit_optional = true
+
+# Pydantic-плагин понимает BaseModel и настройки
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "faiss.*",
+    "sentence_transformers.*",
+    "google.genai.*",
+    "langgraph.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false

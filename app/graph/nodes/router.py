@@ -25,7 +25,10 @@ def route_node(state: AnalysisState) -> dict:
     trace = {
         "node": "router",
         "duration_ms": int((time.monotonic() - t0) * 1000),
-        "llm_calls": 0, "tokens_in": 0, "tokens_out": 0, "error": None,
+        "llm_calls": 0,
+        "tokens_in": 0,
+        "tokens_out": 0,
+        "error": None,
         "model": None,
     }
     return {"mode": mode, "trace": [trace]}

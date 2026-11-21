@@ -1,6 +1,5 @@
 # app/ingestion/chunker.py
 import re
-
 from dataclasses import dataclass
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -62,7 +61,7 @@ def chunk_pages(
                     (offset + int(d.metadata.get("start_index", 0)), d.page_content)
                     for d in fallback.create_documents([section])
                 ]
-            for i, (start, text) in enumerate(pieces):
+            for start, text in pieces:
                 if not text.strip():
                     continue
                 chunks.append(
