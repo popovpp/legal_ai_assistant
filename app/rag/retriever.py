@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Protocol
 
 from app.ingestion.embedder import Embedder
@@ -5,23 +6,31 @@ from app.rag.vector_store import ScoredChunk, VectorStore
 
 
 class RetrieverLike(Protocol):
-    @property
-    def index_version(self) -> int: ...
-
-    def retrieve(self, query: str, k: int = 6) -> list[ScoredChunk]: ...
+    def retrieve(self, language: str, query: str, k: int = 6) -> list[ScoredChunk]: ...
 
 
-class Retriever:
-    def __init__(self, embedder: Embedder, store: VectorStore, min_score: float = 0.30):
-        self.embedder = embedder
-        self.store = store
+class RetrieverRegistry:
+    def __init__(
+        self,
+        embedders: Mapping[str, Embedder],
+        stores: Mapping[str, VectorStore],
+        min_score: float,
+    ):
+        self._embedders = embedders
+        self._stores = stores
         self.min_score = min_score
 
-    @property
-    def index_version(self) -> int:
-        return len(self.store)
+    def get(self, language: str) -> tuple[Embedder, VectorStore]:
+        if language not in self._embedders:
+            raise ValueError(f"Unsupported language: {language}")
+        return self._embedders[language], self._stores[language]
 
-    def retrieve(self, query: str, k: int = 6) -> list[ScoredChunk]:
-        q = self.embedder.encode_one(query)
-        candidates = self.store.search(q, k=k)
+    @property
+    def index_version(self) -> dict[str, int]:
+        return {lang: len(store) for lang, store in self._stores.items()}
+
+    def retrieve(self, language: str, query: str, k: int = 6) -> list[ScoredChunk]:
+        embedder, store = self.get(language)
+        q = embedder.encode_one(query)
+        candidates = store.search(q, k=k)
         return [c for c in candidates if c.score >= self.min_score]

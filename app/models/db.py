@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS documents (
     id TEXT PRIMARY KEY,
     filename TEXT NOT NULL,
     mime TEXT NOT NULL,
+    language TEXT NOT NULL DEFAULT 'en',
     num_pages INTEGER NOT NULL DEFAULT 0,
     num_chunks INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL
@@ -57,6 +58,8 @@ def get_conn() -> Iterator[sqlite3.Connection]:
 
 
 def init_db() -> None:
-    settings.ensure_dirs()  # ← добавить
+    settings.ensure_dirs()
     with get_conn() as conn:
-        conn.executescript(SCHEMA)
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(documents)")]
+        if "language" not in cols:
+            conn.execute("ALTER TABLE documents ADD COLUMN language TEXT NOT NULL DEFAULT 'en'")

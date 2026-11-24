@@ -41,10 +41,12 @@ def make_analyst_node(llm: LLMClient):
         if state.get("retry_count", 0) > 0:
             feedback = state.get("verification", {}).get("unsupported") or None
 
+        language = state.get("language", "en")
         prompt = build_analyst_prompt(
             query=state["query"],
             mode=state["mode"],
             chunks=retrieved,
+            language=language,
             feedback=feedback,
         )
 
@@ -52,8 +54,7 @@ def make_analyst_node(llm: LLMClient):
             out, meta = llm.generate_json(
                 prompt=prompt,
                 schema=AnalystOutputSchema,
-                system_instruction=ANALYST_SYSTEM,
-                max_output_tokens=8192 if state["mode"] in ("risk", "summary") else 2048,
+                system_instruction=ANALYST_SYSTEM[language],
             )
         except LLMError as exc:
             trace = {

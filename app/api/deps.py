@@ -2,17 +2,17 @@
 from fastapi import Request
 
 from app.ingestion.embedder import Embedder
-from app.rag.retriever import Retriever
-from app.rag.vector_store import VectorStore
+from app.rag.retriever import RetrieverRegistry
+from app.rag.vector_store import FaissVectorStore
 
 
-def get_embedder(request: Request) -> Embedder:
-    return request.app.state.embedder
+def get_embedders(request: Request) -> dict[str, Embedder]:
+    return request.app.state.embedders
 
 
-def get_vector_store(request: Request) -> VectorStore:
-    return request.app.state.vector_store
+def get_stores(request: Request) -> dict[str, FaissVectorStore]:
+    return request.app.state.stores
 
 
-def get_retriever(request: Request) -> Retriever:
+def get_retriever(request: Request) -> RetrieverRegistry:
     return request.app.state.retriever

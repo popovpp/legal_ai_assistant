@@ -18,7 +18,8 @@ class Settings(BaseSettings):
     llm_max_retries: int = 2
 
     # Embeddings
-    embed_model: str = "all-MiniLM-L6-v2"
+    embed_model_en: str = "all-MiniLM-L6-v2"
+    embed_model_ru: str = "Roflmax/bge-m3-russian-legal"
 
     # Retrieval
     top_k: int = 6
@@ -34,6 +35,14 @@ class Settings(BaseSettings):
 
     # Storage
     data_dir: Path = Path("data")
+
+    @property
+    def index_dir_en(self) -> Path:
+        return self.data_dir / "index_en"
+
+    @property
+    def index_dir_ru(self) -> Path:
+        return self.data_dir / "index_ru"
 
     @property
     def llm_model_chain(self) -> list[str]:

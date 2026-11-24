@@ -6,14 +6,14 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
-from app.api.deps import get_embedder, get_vector_store
+from app.api.deps import get_embedders, get_stores
 from app.config import settings
 from app.ingestion.embedder import Embedder
 from app.ingestion.extractor import SUPPORTED_EXTENSIONS
 from app.ingestion.service import ingest_document
 from app.models.db import get_conn
 from app.models.schemas import DocumentInfo, DocumentUploadResponse
-from app.rag.vector_store import VectorStore
+from app.rag.vector_store import FaissVectorStore
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -31,11 +31,18 @@ def _mime(suffix: str) -> str:
     return _MIME.get(suffix, "application/octet-stream")
 
 
-@router.post("", response_model=DocumentUploadResponse, status_code=201)
+@router.post(
+    "",
+    response_model=DocumentUploadResponse,
+    status_code=201,
+    summary="Загрузить документ",
+    description="Принимает `.txt`, `.md`, `.pdf` до 20 MB. Язык определяется автоматически.",
+    response_description="ID документа, язык, число страниц и чанков.",
+)
 async def upload_document(
     file: UploadFile = File(...),
-    embedder: Embedder = Depends(get_embedder),
-    store: VectorStore = Depends(get_vector_store),
+    embedders: dict[str, Embedder] = Depends(get_embedders),
+    stores: dict[str, FaissVectorStore] = Depends(get_stores),
 ) -> DocumentUploadResponse:
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in SUPPORTED_EXTENSIONS:
@@ -55,8 +62,8 @@ async def upload_document(
             source_path=tmp_path,
             filename=file.filename or tmp_path.name,
             mime=_mime(suffix),
-            embedder=embedder,
-            store=store,
+            embedders=embedders,
+            stores=stores,
         )
     except Exception as exc:
         logger.exception("ingestion failed")
@@ -73,13 +80,15 @@ async def upload_document(
 def list_documents() -> list[DocumentInfo]:
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT id, filename, mime, num_pages, num_chunks, created_at FROM documents ORDER BY created_at DESC"
+            "SELECT id, filename, mime, language, num_pages, num_chunks, created_at "
+            "FROM documents ORDER BY created_at DESC"
         ).fetchall()
     return [
         DocumentInfo(
             document_id=r["id"],
             filename=r["filename"],
             mime=r["mime"],
+            language=r["language"],
             num_pages=r["num_pages"],
             num_chunks=r["num_chunks"],
             created_at=r["created_at"],

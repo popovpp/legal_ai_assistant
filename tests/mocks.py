@@ -72,6 +72,6 @@ class MockRetriever:
     def index_version(self) -> int:
         return len(self._chunks)
 
-    def retrieve(self, query: str, k: int = 6) -> list[ScoredChunk]:
+    def retrieve(self, language: str, query: str, k: int = 6) -> list[ScoredChunk]:
         self.calls.append(query)
         return self._chunks[:k]

@@ -1,8 +1,8 @@
 # app/graph/state.py
 import operator
-from typing import Annotated, Literal, TypedDict
+from typing import Annotated, TypedDict
 
-Mode = Literal["auto", "qa", "summary", "risk"]
+from app.types import Language, Mode
 
 
 class RetrievedChunkDict(TypedDict):
@@ -47,6 +47,7 @@ class AnalysisState(TypedDict, total=False):
     document_id: str
     query: str
     mode: Mode
+    language: Language
     retrieved: list[RetrievedChunkDict]
     draft_answer: str
     insufficient_evidence: bool

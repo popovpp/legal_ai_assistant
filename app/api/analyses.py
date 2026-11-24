@@ -19,7 +19,7 @@ from app.models.schemas import (
     TraceEvent,
     VerificationResult,
 )
-from app.rag.retriever import Retriever
+from app.rag.retriever import RetrieverRegistry
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/analyses", tags=["analyses"])
@@ -29,16 +29,23 @@ def _llm(request: Request) -> LLMClient:
     return request.app.state.llm
 
 
-def _retriever(request: Request) -> Retriever:
+def _retriever(request: Request) -> RetrieverRegistry:
     return request.app.state.retriever
 
 
-@router.post("", response_model=AnalysisResponse)
+@router.post(
+    "",
+    response_model=AnalysisResponse,
+    status_code=200,
+    summary="Запустить анализ документа",
+    description="Режимы: `auto` (эвристика), `qa`, `summary`, `risk`. `language` выбирает ветку промптов и индекс.",
+    response_description="Ответ с цитатами, рисками, верификацией и trace.",
+)
 def run_analysis(
     request: Request,
     payload: AnalysisRequest,
     llm: LLMClient = Depends(_llm),
-    retriever: Retriever = Depends(_retriever),
+    retriever: RetrieverRegistry = Depends(_retriever),
 ) -> AnalysisResponse:
 
     cache: InMemoryLRU = request.app.state.cache
@@ -46,6 +53,7 @@ def run_analysis(
         payload.document_id,
         payload.query,
         payload.mode,
+        payload.language,
         retriever.index_version,
     )
 
@@ -70,6 +78,7 @@ def run_analysis(
         "document_id": payload.document_id,
         "query": payload.query,
         "mode": payload.mode,
+        "language": payload.language,
     }
 
     try:

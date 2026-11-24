@@ -5,10 +5,15 @@ import time
 from app.graph.state import AnalysisState
 
 _RISK_RE = re.compile(
-    r"\b(risk|liabilit|breach|penalt|indemnif|terminat|dispute|governing|confidential)",
+    r"\b(risk|liabilit|breach|penalt|indemnif|terminat|dispute|governing|confidential"
+    r"|риск|ответственн|нарушени|штраф|расторжен|спор|конфиденциальн)\b",
     re.I,
 )
-_SUMMARY_RE = re.compile(r"\b(summari[sz]e|summary|overview|brief|describe)\b", re.I)
+_SUMMARY_RE = re.compile(
+    r"\b(summari[sz]e|summary|overview|brief|describe"
+    r"|сумм|обзор|кратк|опиши)\b",
+    re.I,
+)
 
 
 def route_node(state: AnalysisState) -> dict:
